@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile App Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FAA445',
+                        dark: '#000000',
+                        light: '#FFFFFF',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-row:hover {
+            background-color: rgba(250, 164, 69, 0.1);
+            cursor: pointer;
+        }
+        
+        .badge-paid {
+            background-color: #FAA445;
+            color: #000;
+        }
+        
+        .badge-free {
+            background-color: #000;
+            color: #FFF;
+        }
+        
+        .badge-admin {
+            background-color: #4F46E5;
+            color: #FFF;
+        }
+        
+        .badge-maintainer {
+            background-color: #10B981;
+            color: #FFF;
+        }
+        
+        .custom-accordian{
+            position: relative;
+        }
+        .custom-accordian input[type="radio"]{
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity:0;
+        }
+        .custom-accordian + div{
+            display:flex;
+            flex-direction:column;
+            height:0px;
+            overflow:hidden;
+            margin-left:12px;
+        }
+        .custom-accordian:has(input[type="radio"]:checked) + div{
+            height:100%;
+            margin-top: 0;
+        }
+        .custom-accordian + div > div{
+            display:flex;
+            justify-content: space-between;
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #FAA445;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    
+    <!-- Main Dashboard (initially hidden) -->
+    <div id="dashboard">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-black">App Dashboard</h1>
+                    <p class="text-sm text-gray-500">Welcome back, <span id="loggedInUser" class="font-medium">Admin</span></p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="text" placeholder="Search..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <div class="relative group">
+                        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black font-bold cursor-pointer  transition">
+                            <span>Logout</span>
+                        </div>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                            {% comment %} <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a> {% endcomment %}
+                            {% comment %} <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="showMaintainerModal()">Create Maintainer</a> {% endcomment %}
+                            <a href="{% url 'web_logout' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="logout()">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Overview Cards -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Revenue Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Total Revenue</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="revenueCounter">{{total_amount}}</h2>
+                            <p class="text-sm text-gray-500 mt-1">From subscriptions</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-dollar-sign text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        <span class="text-green-500 text-sm font-medium flex items-center">
+                            <i class="fas fa-arrow-up mr-1"></i> 12.5%
+                        </span>
+                        <span class="text-gray-500 text-sm ml-2">vs last month</span>
+                    </div>
+                </div>
+                
+                <!-- Users Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Total Users</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="usersCounter">{{user_count}}</h2>
+                            <p class="text-sm text-gray-500 mt-1">Registered accounts</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-users text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        <span class="text-green-500 text-sm font-medium flex items-center">
+                            <i class="fas fa-arrow-up mr-1"></i> 8.3%
+                        </span>
+                        <span class="text-gray-500 text-sm ml-2">vs last month</span>
+                    </div>
+                </div>
+                
+                <!-- Time Spent Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Time Spent</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="timeCounter">{{total_time}} hrs</h2>
+                            <p class="text-sm text-gray-500 mt-1">This week</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-clock text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <canvas id="timeChart" height="40"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- User Management Section -->
+            <section class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-black">User Management</h2>
+                    <div class="flex space-x-3">
+                        {% comment %} <button class="px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition flex items-center">
+                            <i class="fas fa-download mr-2"></i> Export
+                        </button> {% endcomment %}
+                        {% comment %} <div class="relative">
+                            <select class="appearance-none pl-3 pr-8 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+                                <option>All Users</option>
+                                <option>Paid Users</option>
+                                <option>Free Users</option>
+                                <option>Active Users</option>
+                                <option>Inactive Users</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-3 top-3 text-gray-400 pointer-events-none"></i>
+                        </div> {% endcomment %}
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody" class="bg-white divide-y divide-gray-200">
+                            {% for obj in user_list %}
+                            <tr class="user-row" onclick="showUserDetails({{obj.id}})">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">{{obj.id}}</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">{% if obj.userName %}{{ obj.userName }}{% else %}N/A{% endif %}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{% if obj.email %}{{ obj.email }}{% else %}N/A{% endif %}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-paid">{% if obj.userType %}{{ obj.userType }}{% else %}N/A{% endif %}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800">{% if obj.phone %}{{ obj.phone }}{% else %}N/A{% endif %}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{% if obj.lastLogin %}{{ obj.lastLogin }}{% else %}N/A{% endif %}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    {% comment %} <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button> {% endcomment %}
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% comment %} <tr class="user-row" onclick="showUserDetails(2)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">AS</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Alice Smith</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">alice.smith@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-free">Free</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800">User</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1 day ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="user-row" onclick="showUserDetails(3)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">RJ</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Robert Johnson</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">robert.j@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-paid">Paid</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-maintainer">Maintainer</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">30 minutes ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="user-row" onclick="showUserDetails(4)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">MB</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Maria Brown</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">maria.b@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-free">Free</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-admin">Admin</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3 days ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr> {% endcomment %}
+                        </tbody>
+                    </table>
+                </div>
+                <div id="paginationControls" class="mt-4 flex justify-center space-x-2"></div>
+                {% comment %} <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        Showing <span class="font-medium">1</span> to <span class="font-medium">4</span> of <span class="font-medium">124</span> users
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="px-3 py-1 rounded-lg bg-primary text-black font-medium">1</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">2</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">3</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div> {% endcomment %}
+            </section>
+        </div>
+    </div>
+    
+    <!-- User Details Overlay -->
+    <div id="userDetailsOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="absolute right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 bg-white slide-in overflow-y-auto">
+            <div class="p-6">
+                <!-- Header with close button -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-black">User Details</h2>
+                    <button onclick="hideUserDetails()" class="text-gray-500 hover:text-black">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Profile Header -->
+                <div class="flex items-center mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+                        <span class="text-gray-600 text-xl" id="userInitials">JD</span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-black" id="userName"></h3>
+                        <p class="text-gray-500 text-sm" id="userEmail"></p>
+                        <p class="text-gray-500 text-sm" id="userPhone"></p>
+                        <div class="flex mt-1 space-x-2">
+                            <span class="px-2 py-1 text-xs rounded-full" id="userType"></span>
+                            <span class="px-2 py-1 text-xs rounded-full" id="userRole"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Time Spent Analytics -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-black">Time Spent</h4>
+                        <button class="text-primary text-sm font-medium hover:text-yellow-600">View All</button>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <canvas id="userTimeChart" height="200"></canvas>
+                    </div>
+                    
+                    <div class="space-y-3" id="activity_time_listt">
+
+                        {% comment %} <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-black">Sep 19</p>
+                                <p class="text-xs text-gray-500">8:00 PM – 9:30 PM</p>
+                            </div>
+                            <span class="text-sm font-medium text-black">1.5 hrs</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-black">Sep 18</p>
+                                <p class="text-xs text-gray-500">12:00 PM – 1:45 PM</p>
+                            </div>
+                            <span class="text-sm font-medium text-black">1.75 hrs</span>
+                        </div> {% endcomment %}
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-primary bg-opacity-10 rounded-lg flex justify-between items-center">
+                        <p class="text-sm font-medium text-black">Total Time This Week</p>
+                        <span class="text-sm font-bold text-black" id="activity_time_cal"></span>
+                    </div>
+                </div>
+                
+                <!-- Payment History -->
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-black">Payment History</h4>
+                        {% comment %} <button class="text-primary text-sm font-medium hover:text-yellow-600 flex items-center">
+                            <i class="fas fa-download mr-1"></i> Export
+                        </button> {% endcomment %}
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="payment_detail">
+                                
+                                {% comment %} <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Aug 15, 2023</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">$9.99</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Success</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Jul 15, 2023</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">$9.99</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Failed</span>
+                                    </td>
+                                </tr> {% endcomment %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="mt-6 pt-6 border-t border-gray-200 flex space-x-3">
+                    <button onclick="openTopicsModal()" id="topic_button" class="flex-1 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                        <i class="fas fa-envelope mr-2"></i> Topics
+                    </button>
+                    {% comment %} <button class="flex-1 py-2 border border-gray-300 text-black rounded-lg font-medium hover:bg-gray-100 transition">
+                        <i class="fas fa-ban mr-2"></i> Block
+                    </button> {% endcomment %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="topicsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative p-6">
+        <button onclick="closeTopicsModal()" class="absolute top-2 right-4 text-2xl text-gray-500 hover:text-gray-700 font-bold">&times;</button>
+        <h2 class="text-xl font-semibold mb-4">Topics</h2>
+        
+        <div id="topicsList" class="space-y-4">
+        <!-- Topic list will be rendered here -->
+        <p class="text-center text-gray-400">Loading topics...</p>
+        </div>
+    </div>
+    </div>
+
+
+
+
+    <!-- Create Maintainer Modal -->
+    <div id="maintainerModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md z-10 relative">
+            <h2 class="text-2xl font-bold text-black mb-6 text-center">Create New Maintainer</h2>
+            <form id="maintainerForm">
+                <div class="mb-4">
+                    <label for="maintainerName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="maintainerName" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="mb-4">
+                    <label for="maintainerEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="maintainerEmail" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="mb-6">
+                    <label for="maintainerPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="maintainerPassword" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="hideMaintainerModal()" class="flex-1 py-2 border border-gray-300 text-black rounded-lg font-medium hover:bg-gray-100 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                        Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="paymentDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-xl w-full max-w-2xl shadow-lg relative overflow-y-auto max-h-[90vh]">
+            <button onclick="closePaymentDetailModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-bold mb-4">Payment Details</h2>
+            <div id="paymentDetailContent" class="text-sm text-gray-700">
+            <!-- Payment data will be loaded here -->
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+
+
+        // Counter animations
+        function animateCounter(element, target, prefix = '', suffix = '') {
+            let current = 0;
+            const increment = target / 100;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {a
+                    clearInterval(timer);
+                    current = target;
+                }
+
+
+                if (prefix === '$') {
+    element.textContent = prefix + current.toFixed(2) + suffix;
+} else {
+    element.textContent = prefix + Math.floor(current) + suffix;
+}
+
+
+            }, 10);
+        }
+        
+        // Initialize counters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show login modal by default
+            document.getElementById('loginModal').classList.add('flex');
+            document.getElementById('loginModal').classList.remove('hidden');
+            
+            // Login form submission
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                // Simple validation (in a real app, you would authenticate with a backend)
+                if (email && password) {
+                    // Simulate login
+                    document.getElementById('loginModal').classList.remove('flex');
+                    document.getElementById('loginModal').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    
+                    // Set logged in user
+                    document.getElementById('loggedInUser').textContent = email.split('@')[0];
+                    
+                    // Initialize dashboard
+                    animateCounter(document.getElementById('revenueCounter'), 5240, '$');
+                    animateCounter(document.getElementById('usersCounter'), 1240);
+                    animateCounter(document.getElementById('timeCounter'), 1230, '', ' hrs');
+                    
+                    // Initialize time chart
+                    const timeCtx = document.getElementById('timeChart').getContext('2d');
+                    const timeChart = new Chart(timeCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            datasets: [{
+                                data: [120, 190, 150, 200, 180, 170, 220],
+                                backgroundColor: 'rgba(250, 164, 69, 0.1)',
+                                borderColor: '#FAA445',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true,
+                                pointBackgroundColor: '#FAA445',
+                                pointRadius: 0,
+                                pointHoverRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    display: false
+                                },
+                                x: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // Maintainer form submission
+            document.getElementById('maintainerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const name = document.getElementById('maintainerName').value;
+                const email = document.getElementById('maintainerEmail').value;
+                const password = document.getElementById('maintainerPassword').value;
+                
+                // In a real app, you would send this data to your backend
+                alert(`Maintainer account created for ${name} (${email})`);
+                hideMaintainerModal();
+            });
+        });
+        
+        // User details functions
+        function showUserDetails(userId) {
+            // Simulate loading data
+            document.getElementById('userDetailsOverlay').classList.remove('hidden');
+            
+            // In a real app, you would fetch user data based on userId
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'user_detail' %}",  // Your view's URL name
+                data: {'id':userId},
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(response) {
+                    
+                    
+                    success_data = response.data[0]
+                    
+                    document.getElementById('userInitials').textContent = success_data["shortName"];
+                    document.getElementById('userName').textContent = success_data["userName"];
+                    document.getElementById('userEmail').textContent = success_data["email"];
+                    document.getElementById('userPhone').textContent = success_data["phone"];
+                    document.getElementById('userType').textContent = success_data["subscription"];
+                    document.getElementById('userType').className = 'px-2 py-1 text-xs rounded-full badge-paid';
+                    document.getElementById('userRole').textContent = 'User';
+                    document.getElementById('userRole').className = 'px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800';
+                    
+                    const userId = success_data["id"];  // This could come from your backend or logic
+                    document.getElementById('topic_button').setAttribute('user_id', userId);
+
+                    let newRow = "";
+                    function formatDate(dateString) {
+                        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString('en-US', options);
+                    }
+                    // Optional: clear previous rows
+                    $('#payment_detail').empty();
+
+                    if (success_data["payment_detail"].length !== 0) {
+                        for (let i = 0; i < success_data["payment_detail"].length; i++) {
+                            let payment_obj = success_data["payment_detail"][i];
+
+                            // Set status color class
+                            let status = payment_obj.status || "Unknown";
+                            let statusColor = 'bg-green-100 text-green-800';
+
+                            if (status.toLowerCase() === 'failed') {
+                                statusColor = 'bg-red-100 text-red-800';
+                            } else if (status.toLowerCase() === 'pending') {
+                                statusColor = 'bg-yellow-100 text-yellow-800';
+                            }
+
+                            // Append table row with dynamic data
+                            newRow += `
+                                <tr onclick="loadPaymentDetails(${payment_obj.id})" class="cursor-pointer hover:bg-gray-100">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatDate(payment_obj.created_at)}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatDate(payment_obj.subscribe_detail.end_at)}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">${payment_obj.amount/100}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full ${statusColor}">${status}</span>
+                                    </td>
+                                </tr>`
+                                }
+                            } else {
+                                newRow = `
+                                    <tr>
+                                        <td colspan="3" class="text-center px-4 py-3 text-sm text-gray-500">No Data Found</td>
+                                    </tr>`;
+                            }
+
+                        // Append to table body
+                    $('#payment_detail').append(newRow);
+                            
+                    function formatTime(dateTimeString) {
+                        if (!dateTimeString) {
+                            return "    "; // or return "N/A", "Invalid Time", etc.
+                        }
+
+                        const date = new Date(dateTimeString);
+
+                        if (isNaN(date.getTime())) {
+                            return "    "; // invalid date format
+                        }
+
+                        const options = { hour: 'numeric', minute: '2-digit', hour12: true };
+                        return date.toLocaleTimeString('en-US', options);
+                    }
+
+                    let timeRow = "";    
+                    $('#activity_time_listt').empty();
+                    
+                    if (success_data["activity_data"].length !== 0) {
+                        for (let i = 0; i < success_data["activity_data"].length; i++) {
+                            let act_time_obj = success_data["activity_data"][i];
+                            let act_all_obj  = success_data["activity_data"][i]["all_activity_list"];
+                                                   
+                            let all_act = "";
+                            for (let j = 0; j < act_time_obj["all_activity_list"].length; j++) {
+                                
+                                all_act+=`
+                                    
+                                        <div class="p-3">
+                                            <span class="text-xs text-gray-500">${formatTime(act_all_obj[j]["startTimeStamp"])} - ${formatTime(act_all_obj[j]["closeTimeStamp"])}</span>
+                                            <span class="text-xs text-gray-500">${(act_all_obj[j]["totalSecond"])/3600} hrs</span>
+                                        </div>
+                                    `
+                                
+
+                            }
+                            // Append table row with dynamic data
+                            timeRow += `
+                                <div class="custom-accordian flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <input type="radio" name="accordian"/>
+                                    <div>
+                                        <p class="text-sm font-medium text-black">${formatDate(act_time_obj.activity_date)}</p>
+                                        <p class="text-xs text-gray-500">${formatTime(act_time_obj.start_time)} - ${formatTime(act_time_obj.end_time)}</p>
+                                    </div>
+                                    <span class="text-sm font-medium text-black">${act_time_obj.total_time} hrs</span>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg" id="vishal-${i}">
+                                ${all_act}
+                                </div>
+                                `
+                        }
+                    } else {
+                        timeRow = `
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="text-sm font-medium text-black"></p>
+                                    <p class="text-xs text-gray-500"> – </p>
+                                </div>
+                                <span class="text-sm font-medium text-black">0 hrs</span>
+                            </div>`
+                    }
+                    $('#activity_time_listt').append(timeRow);
+                    
+
+
+                    $('#activity_time_cal').empty();
+
+                    let cal_hour = success_data["calculated_time"] + ' hrs'
+
+                    $('#activity_time_cal').append(cal_hour);
+                        
+
+                    const act_list = success_data["activity_time_list"];
+                      // Confirm correct data
+                    const userTimeCtx = document.getElementById('userTimeChart').getContext('2d');
+                    window.userTimeChartInstance = new Chart(userTimeCtx, {
+                        type: 'bar',
+                        data: { 
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            datasets: [{
+                                data: act_list,
+                                backgroundColor: '#FAA445',
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { display: false },
+                                    ticks: { stepSize: 1 }
+                                },
+                                x: {
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+
+                },
+                error: function(response) {
+                    alert("failed");
+                }
+            });
+            // In a real app, you would fetch user data based on userId
+            
+        }
+        
+        function hideUserDetails() {
+            if (window.userTimeChartInstance) {
+                window.userTimeChartInstance.destroy();
+            }
+            document.getElementById('userDetailsOverlay').classList.add('hidden');
+        }
+        
+        function showMaintainerModal() {
+            document.getElementById('maintainerModal').classList.remove('hidden');
+        }
+        
+        function hideMaintainerModal() {
+            document.getElementById('maintainerModal').classList.add('hidden');
+        }
+        
+        function logout() {
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+        }
+    </script>
+    
+    <script>
+        const rowsPerPage = 1;
+        const rows = document.querySelectorAll('#userTableBody .user-row');
+        const paginationWrapper = document.getElementById('paginationControls');
+        let currentPage = 1;
+
+        function displayTablePage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+
+            rows.forEach((row, index) => {
+                row.style.display = (index >= start && index < end) ? '' : 'none';
+            });
+
+            updatePaginationControls(page);
+        }
+
+        function updatePaginationControls(activePage) {
+            const pageCount = Math.ceil(rows.length / rowsPerPage);
+            const paginationHTML = [];
+
+            paginationHTML.push(`
+                <button onclick="changePage(${Math.max(1, activePage - 1)})" class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            `);
+
+            for (let i = 1; i <= pageCount; i++) {
+                paginationHTML.push(`
+                    <button onclick="changePage(${i})" class="px-3 py-1 rounded-lg ${i === activePage ? 'bg-primary text-black font-medium' : 'border border-gray-300 text-black hover:bg-gray-100'}">
+                        ${i}
+                    </button>
+                `);
+            }
+
+            paginationHTML.push(`
+                <button onclick="changePage(${Math.min(pageCount, activePage + 1)})" class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            `);
+
+            paginationWrapper.innerHTML = paginationHTML.join('');
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            displayTablePage(currentPage);
+        }
+
+        // On load
+        document.addEventListener('DOMContentLoaded', () => {
+            displayTablePage(currentPage);
+        });
+
+        
+        function loadPaymentDetails(paymentId) {
+            
+            // Show modal
+            document.getElementById('paymentDetailModal').classList.remove('hidden');
+
+            // Optional: show loader
+            const contentDiv = document.getElementById('paymentDetailContent');
+            contentDiv.innerHTML = '<p class="text-center text-gray-500">Loading...</p>';
+
+            // AJAX request to fetch details
+
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'payment_detail' %}",  // Your view's URL name
+                data: {'id':paymentId},
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(response) {
+                    
+                    data = response.data[0];
+                    contentDiv.innerHTML = `
+                        <p><strong>Payment ID:</strong> ${data.id}</p>
+                        <p><strong>Bank Payment ID:</strong> ${data.razorpay_payment_id}</p>
+                        <p><strong>Bank Order ID:</strong> ${data.razorpay_order_id}</p>
+                        <p><strong>Created On:</strong> ${formatDate(data.created_at)}</p>
+                        <p><strong>Subscription Starts:</strong> ${formatDate(data.subscribe_detail.start_at)}</p>
+                        <p><strong>Subscription Ends:</strong> ${formatDate(data.subscribe_detail.end_at)}</p>
+                        <p><strong>Bank Subscription ID:</strong> ${data.subscribe_detail.razorpay_subscription_id}</p>
+                        <p><strong>Amount:</strong> ₹${data.amount/100}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Plan Name:</strong>${data.plan_detail.period} </p>
+                        <p><strong>Plan Amount:</strong>${data.plan_detail.amount/100} </p>
+                    `;
+                }
+            });
+
+
+            
+        }
+
+        function closePaymentDetailModal() {
+            document.getElementById('paymentDetailModal').classList.add('hidden');
+        }
+
+        {% comment %} function formatDate(dateStr) {
+
+            const d = new Date(dateStr);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        } {% endcomment %}
+         function formatDate(dateString) {
+                        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString('en-US', options);
+                    }
+         
+                    
+
+
+
+
+        function openTopicsModal() {
+            const modal = document.getElementById("topicsModal");
+            const listDiv = document.getElementById("topicsList");
+            const button = document.getElementById('topic_button');
+            const userId = button.getAttribute('user_id');
+            modal.classList.remove("hidden");
+
+            // Optional: clear old and show loading
+            listDiv.innerHTML = `<p class="text-center text-gray-400">Loading topics...</p>`;
+
+            // Fetch topics via AJAX
+            
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'topic_list' %}",  // Your view's URL name
+                data: {'id':userId},
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(response) {
+                    data = response.data;
+                    if (data.length === 0) {
+                        listDiv.innerHTML = `<p class="text-center text-gray-500">No topics found.</p>`;
+                        return;
+                    }
+                    
+                    listDiv.innerHTML = ""; // Clear
+                    data.forEach((topic, index) => {
+                        const item = document.createElement("div");
+                        item.className = "p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition";
+                        item.innerHTML = `
+                            <p class="font-semibold text-black">${index + 1}. ${topic.title}</p>
+                            <p class="text-sm text-gray-600">${topic.description}</p>
+                            <p class="text-sm text-gray-600">${topic.section}</p>
+                            <p class="text-sm text-gray-600">${formatSecondsToHHMMSS(topic.video_Time)}</p>
+                        `;
+                        listDiv.appendChild(item);
+                    });
+
+
+
+                }
+            });
+
+        }
+        
+        function formatSecondsToHHMMSS(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const formatted =
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+
+            return formatted;
+        }
+
+
+        function closeTopicsModal() {
+            document.getElementById("topicsModal").classList.add("hidden");
+        }
+
+    </script>
+
+    
+
+
+
+
+</body>
+</html>

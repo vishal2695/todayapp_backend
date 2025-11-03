@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile App Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FAA445',
+                        dark: '#000000',
+                        light: '#FFFFFF',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-row:hover {
+            background-color: rgba(250, 164, 69, 0.1);
+            cursor: pointer;
+        }
+        
+        .badge-paid {
+            background-color: #FAA445;
+            color: #000;
+        }
+        
+        .badge-free {
+            background-color: #000;
+            color: #FFF;
+        }
+        
+        .badge-admin {
+            background-color: #4F46E5;
+            color: #FFF;
+        }
+        
+        .badge-maintainer {
+            background-color: #10B981;
+            color: #FFF;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #FAA445;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 flex items-center justify-center z-50 fade-in">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md z-10 relative">
+            <h2 class="text-2xl font-bold text-black mb-6 text-center">Admin Login</h2>
+            <form id="loginForm" method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="Email" id="email" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" name="Password" id="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="text-right mt-1">
+                    <a href="#" id="forgotPasswordLink" class="text-sm text-blue-600 hover:underline">Forgot password?</a>
+                </div>
+                <button type="submit" class="w-full py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                    Login
+                </button>
+            </form>
+            <div id="resultt"></div>
+        </div>
+    </div>
+    
+    <div id="resetModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10 relative">
+            <h2 class="text-xl font-semibold text-center mb-4">Reset Password</h2>
+            <form id="resetForm" method="post">
+                {% csrf_token %}
+                <label for="resetEmail" class="block text-sm font-medium text-gray-700 mb-1">Enter your email</label>
+                <input type="email" id="resetEmail" name="email" class="w-full px-4 py-2 mb-4 border rounded-lg" required>
+                <button type="submit" class="w-full py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                    Send Reset Link
+                </button>
+                <button type="button" id="cancelReset" class="w-full mt-2 text-sm text-gray-500 hover:underline">Cancel</button>
+            </form>
+            <div id="resetResult" class="text-sm mt-2 text-center"></div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard (initially hidden) -->
+    <div id="dashboard" class="hidden">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-black">App Dashboard</h1>
+                    <p class="text-sm text-gray-500">Welcome back, <span id="loggedInUser" class="font-medium">Admin</span></p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input type="text" placeholder="Search..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <div class="relative group">
+                        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black font-bold cursor-pointer hover:bg-yellow-600 transition">
+                            <span>AD</span>
+                        </div>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="showMaintainerModal()">Create Maintainer</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onclick="logout()">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Overview Cards -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Revenue Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Total Revenue</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="revenueCounter">$0.00</h2>
+                            <p class="text-sm text-gray-500 mt-1">From subscriptions</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-dollar-sign text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        <span class="text-green-500 text-sm font-medium flex items-center">
+                            <i class="fas fa-arrow-up mr-1"></i> 12.5%
+                        </span>
+                        <span class="text-gray-500 text-sm ml-2">vs last month</span>
+                    </div>
+                </div>
+                
+                <!-- Users Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Total Users</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="usersCounter">0</h2>
+                            <p class="text-sm text-gray-500 mt-1">Registered accounts</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-users text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        <span class="text-green-500 text-sm font-medium flex items-center">
+                            <i class="fas fa-arrow-up mr-1"></i> 8.3%
+                        </span>
+                        <span class="text-gray-500 text-sm ml-2">vs last month</span>
+                    </div>
+                </div>
+                
+                <!-- Time Spent Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 font-medium">Time Spent</p>
+                            <h2 class="text-3xl font-bold text-black mt-2" id="timeCounter">0 hrs</h2>
+                            <p class="text-sm text-gray-500 mt-1">This week</p>
+                        </div>
+                        <div class="bg-primary bg-opacity-20 p-3 rounded-lg">
+                            <i class="fas fa-clock text-primary text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <canvas id="timeChart" height="40"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- User Management Section -->
+            <section class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-black">User Management</h2>
+                    <div class="flex space-x-3">
+                        <button class="px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition flex items-center">
+                            <i class="fas fa-download mr-2"></i> Export
+                        </button>
+                        <div class="relative">
+                            <select class="appearance-none pl-3 pr-8 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+                                <option>All Users</option>
+                                <option>Paid Users</option>
+                                <option>Free Users</option>
+                                <option>Active Users</option>
+                                <option>Inactive Users</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-3 top-3 text-gray-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr class="user-row" onclick="showUserDetails(1)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">JD</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">John Doe</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">john.doe@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-paid">Paid</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800">User</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2 hours ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="user-row" onclick="showUserDetails(2)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">AS</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Alice Smith</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">alice.smith@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-free">Free</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800">User</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1 day ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="user-row" onclick="showUserDetails(3)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">RJ</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Robert Johnson</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">robert.j@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-paid">Paid</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-maintainer">Maintainer</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">30 minutes ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                            <tr class="user-row" onclick="showUserDetails(4)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <span class="text-gray-600">MB</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-black">Maria Brown</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">maria.b@example.com</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-free">Free</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full badge-admin">Admin</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3 days ago</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-primary hover:text-yellow-600 mr-3"><i class="fas fa-eye"></i></button>
+                                    <button class="text-black hover:text-gray-600"><i class="fas fa-ellipsis-v"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        Showing <span class="font-medium">1</span> to <span class="font-medium">4</span> of <span class="font-medium">124</span> users
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="px-3 py-1 rounded-lg bg-primary text-black font-medium">1</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">2</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">3</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-black hover:bg-gray-100">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- User Details Overlay -->
+    <div id="userDetailsOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="absolute right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 bg-white slide-in overflow-y-auto">
+            <div class="p-6">
+                <!-- Header with close button -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-black">User Details</h2>
+                    <button onclick="hideUserDetails()" class="text-gray-500 hover:text-black">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Profile Header -->
+                <div class="flex items-center mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+                        <span class="text-gray-600 text-xl" id="userInitials">JD</span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-black" id="userName">John Doe</h3>
+                        <p class="text-gray-500 text-sm" id="userEmail">john.doe@example.com</p>
+                        <p class="text-gray-500 text-sm" id="userPhone">+1 (555) 123-4567</p>
+                        <div class="flex mt-1 space-x-2">
+                            <span class="px-2 py-1 text-xs rounded-full" id="userType">Paid</span>
+                            <span class="px-2 py-1 text-xs rounded-full" id="userRole">Admin</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Time Spent Analytics -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-black">Time Spent</h4>
+                        <button class="text-primary text-sm font-medium hover:text-yellow-600">View All</button>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <canvas id="userTimeChart" height="200"></canvas>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-black">Sep 20</p>
+                                <p class="text-xs text-gray-500">5:00 AM – 7:00 AM</p>
+                            </div>
+                            <span class="text-sm font-medium text-black">2 hrs</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-black">Sep 19</p>
+                                <p class="text-xs text-gray-500">8:00 PM – 9:30 PM</p>
+                            </div>
+                            <span class="text-sm font-medium text-black">1.5 hrs</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-black">Sep 18</p>
+                                <p class="text-xs text-gray-500">12:00 PM – 1:45 PM</p>
+                            </div>
+                            <span class="text-sm font-medium text-black">1.75 hrs</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-primary bg-opacity-10 rounded-lg flex justify-between items-center">
+                        <p class="text-sm font-medium text-black">Total Time This Week</p>
+                        <span class="text-sm font-bold text-black">5.25 hrs</span>
+                    </div>
+                </div>
+                
+                <!-- Payment History -->
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="font-bold text-black">Payment History</h4>
+                        <button class="text-primary text-sm font-medium hover:text-yellow-600 flex items-center">
+                            <i class="fas fa-download mr-1"></i> Export
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Sep 15, 2023</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">$9.99</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Success</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Aug 15, 2023</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">$9.99</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Success</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Jul 15, 2023</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">$9.99</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Failed</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="mt-6 pt-6 border-t border-gray-200 flex space-x-3">
+                    <button class="flex-1 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                        <i class="fas fa-envelope mr-2"></i> Message
+                    </button>
+                    <button class="flex-1 py-2 border border-gray-300 text-black rounded-lg font-medium hover:bg-gray-100 transition">
+                        <i class="fas fa-ban mr-2"></i> Block
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Maintainer Modal -->
+    <div id="maintainerModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md z-10 relative">
+            <h2 class="text-2xl font-bold text-black mb-6 text-center">Create New Maintainer</h2>
+            <form id="maintainerForm">
+                <div class="mb-4">
+                    <label for="maintainerName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="maintainerName" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="mb-4">
+                    <label for="maintainerEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="maintainerEmail" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="mb-6">
+                    <label for="maintainerPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="maintainerPassword" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="hideMaintainerModal()" class="flex-1 py-2 border border-gray-300 text-black rounded-lg font-medium hover:bg-gray-100 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 py-2 bg-primary text-black rounded-lg font-medium hover:bg-yellow-600 transition">
+                        Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Counter animations
+        function animateCounter(element, target, prefix = '', suffix = '') {
+            let current = 0;
+            const increment = target / 100;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {a
+                    clearInterval(timer);
+                    current = target;
+                }
+
+
+                if (prefix === '$') {
+    element.textContent = prefix + current.toFixed(2) + suffix;
+} else {
+    element.textContent = prefix + Math.floor(current) + suffix;
+}
+
+
+            }, 10);
+        }
+        
+        // Initialize counters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show login modal by default
+            document.getElementById('loginModal').classList.add('flex');
+            document.getElementById('loginModal').classList.remove('hidden');
+            
+            // Login form submission
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                // Simple validation (in a real app, you would authenticate with a backend)
+                if (email && password) {
+                    // Simulate login
+                    $.ajax({
+                        type: 'POST',
+                        url: "{% url 'web_login' %}",  // Your view's URL name
+                        data: $(this).serialize(),
+                        success: function(response) {
+                            window.location.href = '/dashboard';
+                        },
+                        error: function(response) {
+                            $('#resultt').html('<p style="color:red;">' + 'Invalid Credentials' + '</p>');
+                        }
+                    });
+
+
+                    
+                    
+                    
+                }
+            });
+            
+            // Maintainer form submission
+            document.getElementById('maintainerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const name = document.getElementById('maintainerName').value;
+                const email = document.getElementById('maintainerEmail').value;
+                const password = document.getElementById('maintainerPassword').value;
+                
+                // In a real app, you would send this data to your backend
+                alert(`Maintainer account created for ${name} (${email})`);
+                hideMaintainerModal();
+            });
+        });
+        
+        // User details functions
+        function showUserDetails(userId) {
+            // Simulate loading data
+            document.getElementById('userDetailsOverlay').classList.remove('hidden');
+            
+            // In a real app, you would fetch user data based on userId
+            setTimeout(() => {
+                // Update user details based on userId
+                if (userId === 1) {
+                    document.getElementById('userInitials').textContent = 'JD';
+                    document.getElementById('userName').textContent = 'John Doe';
+                    document.getElementById('userEmail').textContent = 'john.doe@example.com';
+                    document.getElementById('userPhone').textContent = '+1 (555) 123-4567';
+                    document.getElementById('userType').textContent = 'Paid';
+                    document.getElementById('userType').className = 'px-2 py-1 text-xs rounded-full badge-paid';
+                    document.getElementById('userRole').textContent = 'User';
+                    document.getElementById('userRole').className = 'px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800';
+                } else if (userId === 2) {
+                    document.getElementById('userInitials').textContent = 'AS';
+                    document.getElementById('userName').textContent = 'Alice Smith';
+                    document.getElementById('userEmail').textContent = 'alice.smith@example.com';
+                    document.getElementById('userPhone').textContent = '+1 (555) 987-6543';
+                    document.getElementById('userType').textContent = 'Free';
+                    document.getElementById('userType').className = 'px-2 py-1 text-xs rounded-full badge-free';
+                    document.getElementById('userRole').textContent = 'User';
+                    document.getElementById('userRole').className = 'px-2 py-1 text-xs rounded-full bg-gray-200 text-gray-800';
+                } 
+                
+                // Initialize user time chart
+                const userTimeCtx = document.getElementById('userTimeChart').getContext('2d');
+                const userTimeChart = new Chart(userTimeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            data: [2, 1.5, 1.75, 0, 0, 0, 0],
+                            backgroundColor: '#FAA445',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }, 300);
+        }
+        
+        function hideUserDetails() {
+            document.getElementById('userDetailsOverlay').classList.add('hidden');
+        }
+        
+        function showMaintainerModal() {
+            document.getElementById('maintainerModal').classList.remove('hidden');
+        }
+        
+        function hideMaintainerModal() {
+            document.getElementById('maintainerModal').classList.add('hidden');
+        }
+        
+        function logout() {
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+        }
+    </script>
+
+    <script>
+        document.getElementById('forgotPasswordLink').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('resetModal').classList.remove('hidden');
+        });
+
+        document.getElementById('cancelReset').addEventListener('click', function () {
+            document.getElementById('resetModal').classList.add('hidden');
+        });
+
+        // Optional: Handle reset form submission
+        document.getElementById('resetForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const email = document.getElementById('resetEmail').value;
+
+            // AJAX example (adjust URL to your Django reset view)
+            fetch("{% url 'reset_password' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('resetResult').textContent = data.message || "Check your email.";
+            })
+            .catch(error => {
+                document.getElementById('resetResult').textContent = "Something went wrong.";
+            });
+        });
+    </script>
+
+</body>
+</html>
