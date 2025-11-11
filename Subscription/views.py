@@ -452,7 +452,7 @@ class RazorpayWebhookView(viewsets.ViewSet):
 
 
 
-################################## Paymnt #################################
+################################## Payment #################################
 
 
 @authenticate_token
@@ -488,3 +488,45 @@ def payment_all(request):
         return Response({"message":str(e), "status":500, "data":[]})
 
 
+
+
+def create_order(request):
+    if request.method == "POST":
+        amount = int(request.POST.get("amount")) * 100  # in paisa
+        name = request.POST.get("name")
+        
+        client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+        payment = Payment.objects.create(name=name, amount=amount / 100)
+
+        order = client.order.create({
+            "amount": amount,
+            "currency": "INR",
+            "payment_capture": 1
+        })
+
+        payment.razorpay_order_id = order["id"]
+        payment.save()
+
+        return JsonResponse({
+            "order_id": order["id"],
+            "key": settings.RAZORPAY_KEY_ID,
+            "amount": amount,
+            "name": name,
+        })
+
+@csrf_exempt
+def payment_success(request):
+    if request.method == "POST":
+        data = request.POST
+        order_id = data.get("razorpay_order_id")
+        payment_id = data.get("razorpay_payment_id")
+        signature = data.get("razorpay_signature")
+
+        payment = Payment.objects.get(razorpay_order_id=order_id)
+        payment.razorpay_payment_id = payment_id
+        payment.razorpay_signature = signature
+        payment.paid = True
+        payment.save()
+
+        return render(request, "payments/success.html", {"payment": payment})

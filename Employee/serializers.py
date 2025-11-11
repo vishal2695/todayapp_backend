@@ -9,6 +9,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
         model  = Employee
         fields = "__all__"
 
+class EmployeeDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Employee
+        exclude = ('accessToken',)
+
 
 class OTPSerializer(serializers.ModelSerializer):
     class Meta:

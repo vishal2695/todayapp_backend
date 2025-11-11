@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from .models import *
 from Subscription.models import *
 from Subscription.serializers import *
-from .serializers import EmployeeSerializer
+from .serializers import *
 from Utils.global_fun import *
 from django.conf import settings
 from twilio.rest import Client
@@ -127,7 +127,6 @@ def otpVerify(request):
                     print("objjj", obj)
                     msg = "User created successfully"
                 else:
-                    
                     return Response({"message":str(ser.errors), "status":404, "data":[]})
             print("final daataa", obj)
             token_data = {"id":obj.id}
@@ -155,7 +154,7 @@ def one(request):
         emp_obj = Employee.objects.filter(id=id)
         data = []
         for emp in emp_obj:
-            serializers = EmployeeSerializer(emp).data
+            serializers = EmployeeDetailSerializer(emp).data
             subs_data = []
             if str(emp.subscription).lower() in ["paid","cancelled"]:
                 subs = Subscription.objects.filter(user=id).order_by('-id').first()
@@ -182,7 +181,7 @@ def update(request):
                     request.data.pop('email')
                 else:
                     request.data.pop('phone')
-            serializers = EmployeeSerializer(emp_obj, data=request.data, partial=True)
+            serializers = EmployeeDetailSerializer(emp_obj, data=request.data, partial=True)
             if serializers.is_valid():
                 serializers.save()
                 return Response({"message":"Success", "status":200, "data":[]})

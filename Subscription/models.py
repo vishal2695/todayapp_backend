@@ -15,6 +15,7 @@ class Plan(models.Model):
     interval = models.IntegerField(default=1)
     description = models.TextField(blank=True)
     razorpay_key = models.TextField(blank=True)
+    days = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -61,15 +62,21 @@ class Payment(models.Model):
         ('refunded', 'Refunded'),
         ('failed', 'Failed'),
     ]
+    TYPE_CHOICES = [
+        ('one time', 'One Time'),
+        ('subscription', 'Subscription'),
+    ]
     
-    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
     razorpay_payment_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
+    razorpay_signature = models.CharField(max_length=255, null=True, blank=True)
     amount = models.IntegerField()
     currency = models.CharField(max_length=3, default='INR')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created')
     method = models.CharField(max_length=50, null=True, blank=True)
     description = models.TextField(blank=True)
+    payment_type = models.CharField(max_length=100, choices=TYPE_CHOICES, default='one time')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

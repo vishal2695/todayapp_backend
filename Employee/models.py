@@ -17,10 +17,16 @@ class Employee(models.Model):
     country        = models.CharField(max_length=50, blank=True)
     countryCode    = models.CharField(max_length=50, blank=True)
     accountStatus  = models.BooleanField(default=True)
-    subscription   = models.CharField(max_length=50, default='trial', blank=True)  # paid/trial
+    subscription   = models.CharField(max_length=50, default='trial', blank=True)  # paid/trial/expire/renew
+    availableSecond = models.IntegerField(default=1800)
+    selectedPlan   = models.ForeignKey('Subscription.Plan', on_delete=models.SET_NULL, null=True, blank=True)
+    startPlan      = models.DateTimeField(auto_now_add=True)
+    endPlan        = models.DateTimeField(auto_now_add=True)
     lastLogin      = models.DateTimeField(auto_now_add=True)
     createdAt      = models.DateTimeField(auto_now_add=True)
     updatedAt      = models.DateTimeField(auto_now=True)
+
+
 
 class OTP(models.Model):
     phone          = models.CharField(max_length=50)
