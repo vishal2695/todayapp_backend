@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 import razorpay
-from datetime import datetime
+from datetime import datetime, timedelta
 from Employee.models import Employee 
 
 
@@ -60,7 +60,6 @@ class CreateSubscriptionAPI(APIView):
         for item in  all_subs["items"]:
             # print(item)
             # item = 
-            from datetime import datetime
 
             # timestamp = item["current_start"]  # your timestamp
             # dt = datetime.fromtimestamp(timestamp)
@@ -70,7 +69,7 @@ class CreateSubscriptionAPI(APIView):
             # dt = datetime.fromtimestamp(timestamp)
 
             # print("end....",dt.strftime("%Y-%m-%d %H:%M:%S"))
-
+            pass
         return Response({
             # "subscription_id": subscription["id"],
             "razorpay_key_id": RAZORPAY_KEY_ID
@@ -93,26 +92,26 @@ def get_plan(request):
         id = user_info["id"]
         print("auth data", id)
         if Employee.objects.filter(id=id).exists():
-            print(id)
-            client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
-            raz_plan = client.plan.all()    
-            print(raz_plan)
-            for item in raz_plan['items']:
-                if not Plan.objects.filter(razorpay_key=item['id']).exists():
-                    print(item['id'])
-                    plan_data = {
-                        "razorpay_key":item['id'],
-                        "period": item['period'],
-                        "interval": item['interval'],
-                        "name": item['item']['name'],
-                        "amount": item['item']['amount'],
-                        "currency": item['item']['currency'],
-                        "description": item['item']['description']
-                        }
-                    print("created...",plan_data)
-                    plan_ser = PlanSerializer(data=plan_data)
-                    if plan_ser.is_valid():
-                        plan_ser.save()
+            # print(id)
+            # client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            # raz_plan = client.plan.all()    
+            # print(raz_plan)
+            # for item in raz_plan['items']:
+            #     if not Plan.objects.filter(razorpay_key=item['id']).exists():
+            #         print(item['id'])
+            #         plan_data = {
+            #             "razorpay_key":item['id'],
+            #             "period": item['period'],
+            #             "interval": item['interval'],
+            #             "name": item['item']['name'],
+            #             "amount": item['item']['amount'],
+            #             "currency": item['item']['currency'],
+            #             "description": item['item']['description']
+            #             }
+            #         print("created...",plan_data)
+            #         plan_ser = PlanSerializer(data=plan_data)
+            #         if plan_ser.is_valid():
+            #             plan_ser.save()
 
             plan_objj = Plan.objects.raw("SELECT id, period FROM `Subscription_plan` GROUP BY `period`")
             final_data = []
@@ -490,14 +489,29 @@ def payment_all(request):
 
 
 
+#### >>>>>>>>>>>>>>>>> ####x
+
+def home(request, id):
+    plan_obj = Plan.objects.all()
+    return render(request, 'payment.html', {"plan":plan_obj, "uid":id})
+
+
 def create_order(request):
     if request.method == "POST":
         amount = int(request.POST.get("amount")) * 100  # in paisa
         name = request.POST.get("name")
-        
+        pid = request.POST.get("pid")
+        uid = request.POST.get("uid")
+        print("pid......",pid)
         client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
-        payment = Payment.objects.create(name=name, amount=amount / 100)
+        plan_obj = Plan.objects.get(id=pid)
+        end_at = datetime.now() + timedelta(days=plan_obj.validity)
+        subs_obj = Subscription(user_id=uid, plan_id=pid, start_at=datetime.now(), end_at=end_at, next_charge_at=end_at)
+        subs_obj.save()
+
+
+        payment = Payment.objects.create(subscription_id=subs_obj.id, amount=amount / 100)
 
         order = client.order.create({
             "amount": amount,
@@ -506,14 +520,17 @@ def create_order(request):
         })
 
         payment.razorpay_order_id = order["id"]
+
         payment.save()
 
         return JsonResponse({
             "order_id": order["id"],
-            "key": settings.RAZORPAY_KEY_ID,
+            "key": RAZORPAY_KEY_ID,
             "amount": amount,
             "name": name,
         })
+
+
 
 @csrf_exempt
 def payment_success(request):
@@ -521,12 +538,48 @@ def payment_success(request):
         data = request.POST
         order_id = data.get("razorpay_order_id")
         payment_id = data.get("razorpay_payment_id")
-        signature = data.get("razorpay_signature")
+        signature  = data.get("razorpay_signature")
 
         payment = Payment.objects.get(razorpay_order_id=order_id)
         payment.razorpay_payment_id = payment_id
         payment.razorpay_signature = signature
-        payment.paid = True
+        payment.status = "captured"
+        # payment.paid = True
         payment.save()
 
-        return render(request, "payments/success.html", {"payment": payment})
+        Subscription.objects.filter(id=payment.subscription.id).update(status="active")
+
+        plan_obj = payment.subscription.plan
+        plan_days = plan_obj.validity
+        plan_availableSecond = plan_obj.availableSecond
+        plan_end = datetime.now() + timedelta(days=plan_days)
+
+        if payment.subscription.user.subscription != "trial":
+            subs_status = "renew"
+        else:
+            subs_status = "paid"
+
+        Employee.objects.filter(id=payment.subscription.user.id).update(availableSecond=plan_availableSecond, selectedPlan=plan_obj, subscription=subs_status, startPlan=datetime.now(), endPlan=plan_end)
+
+
+        return JsonResponse({
+            "status": "success",
+            "pid": payment_id
+        })
+
+
+def payment_detail(request, pid):
+    pobj = Payment.objects.get(razorpay_payment_id=pid)
+    context = {
+        "payment_id": pobj.razorpay_payment_id,
+        "order_id": pobj.razorpay_order_id,
+        "amount": pobj.amount,                              
+        "plan_name": pobj.subscription.plan.name,
+        "validity_days": pobj.subscription.plan.validity
+    }
+    return render(request, "success.html", context)
+
+
+
+
+

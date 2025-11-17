@@ -13,8 +13,10 @@ urlpatterns = [
     
     path('webhook/razorpay/', RazorpayWebhookView.as_view({'post': 'create'}), name='razorpay-webhook'),
 
-    # path('create-order/', views.create_order, name='create_order'),
-    # path('success/', views.payment_success, name='payment_success'),
+    path('plan/<int:id>', home, name='home'),
+    path('plan/create-order/',create_order),
+    path('plan/success/', payment_success),
+    path('plan/success/detail/<str:pid>', payment_detail),
 
 
 ]

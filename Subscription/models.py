@@ -15,13 +15,14 @@ class Plan(models.Model):
     interval = models.IntegerField(default=1)
     description = models.TextField(blank=True)
     razorpay_key = models.TextField(blank=True)
-    days = models.IntegerField(default=0)
+    validity = models.IntegerField(default=0)    #days
+    availableSecond = models.IntegerField(default=3600)    #seconds
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.name} - ₹{self.amount/100}/{self.period}"
+        return f"{self.id}--{self.name} - ₹{self.amount/100}/{self.period}"
 
 class Subscription(models.Model):
     STATUS_CHOICES = [
@@ -81,7 +82,7 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.razorpay_payment_id} - ₹{self.amount/100} - {self.status}"
+        return f"{self.razorpay_payment_id} - ₹{self.amount} - {self.status}"
 
 
 

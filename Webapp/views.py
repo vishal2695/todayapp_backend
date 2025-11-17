@@ -52,7 +52,7 @@ def web_home(request):
         "user_count" :emp_data,
         "total_time" :round(total_time/3600,2),
         "user_list":user_list,
-        "total_amount":total_amount/100
+        "total_amount":total_amount
 
     }
     return render(request, 'home.html', context)

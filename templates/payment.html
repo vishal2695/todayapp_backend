@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
   <title>Razorpay Payment Demo</title>
@@ -16,7 +16,7 @@
   <script>
     $("#payment-form").submit(function(e) {
       e.preventDefault();
-      $.post("/create-order/", {
+      $.post("create-order/", {
         name: $("#name").val(),
         amount: $("#amount").val(),
         csrfmiddlewaretoken: '{{ csrf_token }}'
@@ -34,7 +34,7 @@
               razorpay_signature: response.razorpay_signature,
               csrfmiddlewaretoken: '{{ csrf_token }}'
             }, function(res){
-              window.location.href = "/success/";
+              window.location.href = "subscription/";
             });
           },
           "theme": {"color": "#3399cc"}
@@ -45,4 +45,431 @@
     });
   </script>
 </body>
+</html> -->
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Pay Now</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+
+<h2>Pay for 15-Day Plan</h2>
+
+<button id="payBtn">Pay ₹199</button>
+
+<script>
+    document.getElementById('payBtn').onclick = function(e){
+        var options = {
+            "key": "RAZORPAY_KEY",   // replace
+            "amount": "19900",       // 199 INR = 19900 paise
+            "currency": "INR",
+            "name": "Today App",
+            "description": "15-Day Access Plan",
+            "order_id": "ORDER_ID",  // replace with backend generated order
+            "theme": {
+                "color": "#3399cc"
+            },
+            "handler": function (response){
+                // send details to backend
+                fetch("/payment/success/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body:
+                        "razorpay_payment_id=" + response.razorpay_payment_id +
+                        "&razorpay_order_id="   + response.razorpay_order_id +
+                        "&razorpay_signature="  + response.razorpay_signature
+                }).then(() => {
+                    window.location.href = "/payment/success/";
+                });
+            }
+        };
+
+        var rzp = new Razorpay(options);
+        rzp.open();
+        e.preventDefault();
+    }
+</script>
+
+</body>
+</html> -->
+
+
+
+
+
+
+<!-- 
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Choose Plan & Pay</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .plans {
+      display: grid;
+      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      margin-bottom: 20px;
+    }
+
+    .plan-card {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: 0.2s;
+    }
+
+    .plan-card:hover {
+      border-color: #00c8ff;
+    }
+
+    .plan-card.active {
+      border-color: #00c8ff;
+      background: #222;
+    }
+
+    #payBtn {
+      width: 100%;
+      background: #00c8ff;
+      color: #000;
+      font-size: 18px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #payBtn:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+
+    .user-input {
+      margin-top: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 15px;
+      background: #1e1e1e;
+      color: #fff;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Select Your Plan</h1>
+
+<div class="plans">
+
+  <div class="plan-card" data-days="15" data-amount="199">
+    <h2>15 Days</h2>
+    <p>₹199</p>
+  </div>
+
+  <div class="plan-card" data-days="30" data-amount="299">
+    <h2>30 Days</h2>
+    <p>₹299</p>
+  </div>
+
+  <div class="plan-card" data-days="45" data-amount="399">
+    <h2>45 Days</h2>
+    <p>₹399</p>
+  </div>
+
+  <div class="plan-card" data-days="60" data-amount="499">
+    <h2>60 Days</h2>
+    <p>₹499</p>
+  </div>
+
+</div>
+
+<div class="user-input">
+  <input type="text" id="name" placeholder="Enter your name" required>
+</div>
+
+<button id="payBtn" disabled>Choose a Plan</button>
+
+<script>
+  let selectedPlan = null;
+  let amount = 0;
+
+  $(".plan-card").click(function () {
+      $(".plan-card").removeClass("active");
+      $(this).addClass("active");
+
+      selectedPlan = $(this).data("days");
+      amount = $(this).data("amount");
+
+      $("#payBtn").text(`Pay ₹${amount}`);
+      $("#payBtn").prop("disabled", false);
+  });
+
+  $("#payBtn").click(function(e){
+      e.preventDefault();
+
+      if (!selectedPlan) {
+          alert("Please select a plan.");
+          return;
+      }
+
+      $.post("create-order/", {
+          name: $("#name").val(),
+          amount: amount,
+          plan: selectedPlan,
+          csrfmiddlewaretoken: "{{ csrf_token }}"
+      }, function(data) {
+
+          var options = {
+              "key": data.key,
+              "amount": data.amount,
+              "currency": "INR",
+              "name": "Today App",
+              "description": selectedPlan + "-Day Plan",
+              "order_id": data.order_id,
+              "handler": function (response) {
+                  $.post("/success/", {
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_signature: response.razorpay_signature,
+                      plan: selectedPlan,
+                      csrfmiddlewaretoken: "{{ csrf_token }}"
+                  }, function() {
+                      window.location.href = "/subscription/";
+                  });
+              },
+              "theme": {"color": "#00c8ff"}
+          };
+
+          var rzp = new Razorpay(options);
+          rzp.open();
+      });
+  });
+</script>
+
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Choose Plan & Pay</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    body {
+      background: #0d0d0d;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    /* Grid for Plan Cards */
+    .plans {
+      display: grid;
+      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      margin-bottom: 20px;
+    }
+
+    /* Plan Cards */
+    .plan-card {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: 0.25s ease-in-out;
+    }
+
+    /* Golden hover */
+    .plan-card:hover {
+      border-color: #d4af37; /* GOLD COLOR */
+      transform: translateY(-3px);
+    }
+
+    /* Selected card (active) */
+    .plan-card.active {
+      border-color: #d4af37;
+      background: #262626;
+    }
+
+    /* Input Box */
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 15px;
+      background: #1e1e1e;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    /* Golden Button */
+    #payBtn {
+      width: 100%;
+      background: #d4af37; /* GOLD */
+      color: black;
+      font-size: 18px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: 0.25s;
+    }
+
+    #payBtn:hover {
+      background: #b8962c; /* darker gold */
+    }
+
+    #payBtn:disabled {
+      background: #4d4d4d;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Select Your Plan</h1>
+
+<div class="plans">
+
+    {% for i in plan %}
+    <div class="plan-card" data-days="{{i.validity}}" data-id="{{i.id}}" data-amount="{{i.amount}}">
+        <h2>{{i.validity}} Days</h2>
+        <p>₹{{i.amount}}</p>
+    </div>
+    {% endfor %}
+
+
+
+</div>
+
+<input type="text" id="name" data-uid="{{uid}}" placeholder="Enter your name" required>
+
+<button id="payBtn" disabled>Choose a Plan</button>
+
+<script>
+  let selectedPlan = null;
+  let planid = null;
+  let userid = null;
+  let amount = 0;
+
+  $(".plan-card").click(function () {
+      $(".plan-card").removeClass("active");
+      $(this).addClass("active");
+
+      selectedPlan = $(this).data("days");
+      planid = $(this).data("id");
+      amount = $(this).data("amount");
+    
+      $("#payBtn").text(`Pay ₹${amount}`);
+      $("#payBtn").prop("disabled", false);
+  });
+
+  $("#payBtn").click(function(e){
+      e.preventDefault();
+      if (!selectedPlan) {
+          alert("Please select a plan.");
+          return;
+      }
+
+      $.post("create-order/", {
+          name: $("#name").val(),
+          uid: $("#name").data("uid"),
+          amount: amount,
+          plan: selectedPlan,
+          pid: planid,
+          csrfmiddlewaretoken: "{{ csrf_token }}"
+      }, function(data) {
+
+          var options = {
+              "key": data.key,
+              "amount": data.amount,
+              "currency": "INR",
+              "name": "Today App",
+              "description": selectedPlan + "-Day Plan",
+              "order_id": data.order_id,
+              "theme": {"color": "#d4af37"}, // GOLD THEME
+              "handler": function (response) {
+                  $.post("success/", {
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_signature: response.razorpay_signature,
+                      plan: selectedPlan,
+                      pid:planid,
+                      csrfmiddlewaretoken: "{{ csrf_token }}"
+                  }, function(datas) {
+                      window.location.href = "/subscription/plan/success/detail/"+datas.pid;
+                  });
+              }
+          };
+
+          var rzp = new Razorpay(options);
+          rzp.open();
+      });
+  });
+</script>
+
+</body>
 </html>
+
+
+
+

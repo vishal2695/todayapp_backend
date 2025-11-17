@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful</title>
+
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #0d0d0d; /* Netflix dark */
+            color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 60px auto;
+            padding: 40px;
+            border-radius: 16px;
+            background: #1a1a1a; 
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 2px solid gold;
+            box-shadow: 0px 0px 25px rgba(255, 215, 0, 0.15);
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .checkmark {
+            font-size: 90px;
+            color: gold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 38px;
+            letter-spacing: 1px;
+            color: gold;
+            font-weight: 600;
+        }
+
+        .details-box {
+            margin-top: 30px;
+            padding: 25px;
+            background: #0f0f0f;
+            border-radius: 12px;
+            border: 1px solid gold;
+        }
+
+        .details-box p {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
+        .label {
+            color: gold;
+            font-weight: 600;
+        }
+
+        .button-box {
+            text-align: center;
+            margin-top: 35px;
+        }
+
+        .gold-btn {
+            background: gold;
+            color: black;
+            padding: 14px 35px;
+            font-size: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+
+        .gold-btn:hover {
+            background: #d4b200;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="checkmark">✔</div>
+
+        <h1>Payment Successful</h1>
+
+        <div class="details-box">
+            <p><span class="label">Payment ID:</span> {{ payment_id }}</p>
+            <p><span class="label">Order ID:</span> {{ order_id }}</p>
+            <p><span class="label">Amount Paid:</span> ₹{{ amount }}</p>
+            <p><span class="label">Plan Name:</span> {{ plan_name }}</p>
+            <p><span class="label">Validity:</span> {{ validity_days }} Days</p>
+            <p><span class="label">Status:</span> Successful</p>
+        </div>
+
+        <div class="button-box">
+            <a href="https://todayapp.in/" class="gold-btn">Go to Dashboard</a>
+        </div>
+    </div>
+
+</body>
+</html>

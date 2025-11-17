@@ -22,6 +22,15 @@ class SubscriptionDetailSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = '__all__'
 
+
+
+
+class SubscriptionProfileDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ["start_at","end_at"]
+
+
 class CreateSubscriptionSerializer(serializers.Serializer):
     plan_id = serializers.UUIDField()
     total_count = serializers.IntegerField(required=False, allow_null=True)

@@ -766,7 +766,7 @@
                                 <tr onclick="loadPaymentDetails(${payment_obj.id})" class="cursor-pointer hover:bg-gray-100">
                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatDate(payment_obj.created_at)}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatDate(payment_obj.subscribe_detail.end_at)}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">${payment_obj.amount/100}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-black">${payment_obj.amount}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <span class="px-2 py-1 text-xs rounded-full ${statusColor}">${status}</span>
                                     </td>
@@ -1000,10 +1000,10 @@
                         <p><strong>Subscription Starts:</strong> ${formatDate(data.subscribe_detail.start_at)}</p>
                         <p><strong>Subscription Ends:</strong> ${formatDate(data.subscribe_detail.end_at)}</p>
                         <p><strong>Bank Subscription ID:</strong> ${data.subscribe_detail.razorpay_subscription_id}</p>
-                        <p><strong>Amount:</strong> ₹${data.amount/100}</p>
+                        <p><strong>Amount:</strong> ₹${data.amount}</p>
                         <p><strong>Status:</strong> ${data.status}</p>
                         <p><strong>Plan Name:</strong>${data.plan_detail.period} </p>
-                        <p><strong>Plan Amount:</strong>${data.plan_detail.amount/100} </p>
+                        <p><strong>Plan Amount:</strong>${data.plan_detail.amount} </p>
                     `;
                 }
             });

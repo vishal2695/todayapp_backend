@@ -8,6 +8,7 @@ from .serializers import *
 from Utils.global_fun import *
 from django.conf import settings
 from twilio.rest import Client
+from datetime import datetime
 # Create your views here.
 
 
@@ -61,6 +62,8 @@ def login_or_signup(request):
                         return Response({"message":str(ser.errors), "status":404, "data":[]})
                 else:
                     obj = Employee.objects.filter(email=email, userType=UType).first()
+                    obj.lastLogin = datetime.now()
+                    print("timing....",datetime.now())
                 print("final daataa", obj)
                 token_data = {"id":obj.id}
                 token = encrypt_token(token_data)
@@ -112,6 +115,7 @@ def otpVerify(request):
             if Employee.objects.filter(phone=phone, accountStatus=True).exists():
                 obj = Employee.objects.filter(phone=phone, accountStatus=True).first()
                 msg = "User login successfully"
+                obj.lastLogin = datetime.now()
             else:
                 # emp_obj = Employee(phone=phone, userType='phone')
                 # emp_obj.save()
@@ -152,16 +156,22 @@ def one(request):
         print(user_info)
         id = user_info["id"]
         emp_obj = Employee.objects.filter(id=id)
-        data = []
-        for emp in emp_obj:
-            serializers = EmployeeDetailSerializer(emp).data
-            subs_data = []
-            if str(emp.subscription).lower() in ["paid","cancelled"]:
-                subs = Subscription.objects.filter(user=id).order_by('-id').first()
-                subs_ser = SubscriptionDetailSerializer(subs).data
-                subs_data.append(subs_ser)
-            serializers["subscription_detail"] = subs_data
-            data.append(serializers)
+        serializers = EmployeeDetailSerializer(emp_obj, many=True).data
+        # data = []
+        # for emp in emp_obj:
+        #     serializers = EmployeeDetailSerializer(emp).data
+        #     subs_data = []
+            # if str(emp.subscription).lower() in ["paid","cancelled"]:
+            #     subs = Subscription.objects.filter(user=id).order_by('-id').first()
+            #     subs_ser = SubscriptionProfileDetailSerializer(subs).data
+            #     subs_data.append(subs_ser)
+            # else:
+            #     subs_ser = SubscriptionProfileDetailSerializer().data
+            #     subs_ser["start_at"] = emp.createdAt
+            #     # subs_ser["end_at"]   = (emp.createdAt+15)
+            #     subs_data.append(subs_ser)
+            # serializers["subscription_detail"] = subs_data
+            # data.append(serializers)
         return Response({"message":"Success", "status":200, "data":serializers})
     except Exception as e:
         return Response({"message":str(e), "status":500, "data":[]})
@@ -309,3 +319,27 @@ def image_remove(request):
 
 
 
+
+@authenticate_token
+@api_view(['POST'])
+def valid_user_access(request):
+    try:
+        user_info = getattr(request, 'user_data', None)
+        print(user_info)
+        id = user_info["id"]
+        if Employee.objects.filter(id=id).exists():
+            use_time = user_info["seconds"]
+            emp_obj = Employee.objects.get(id=id)
+            if int(emp_obj.availableSecond) > int(use_time):
+                seconds_left = emp_obj.availableSecond - int(use_time)
+                emp_obj.availableSecond = seconds_left
+                if seconds_left == 0:
+                    emp_obj.subscription = "expire"
+                emp_obj.save()
+
+                return Response({"message":"Success", "status":200, "data":[]})
+            else:
+                return Response({"message":"Access Denied", "status":404, "data":[]})
+        return Response({"message":"Invalid User", "status":404, "data":[]})
+    except Exception as e:
+        return Response({"message":str(e), "status":500, "data":[]})
