@@ -9,6 +9,7 @@ from Utils.global_fun import *
 from django.conf import settings
 from twilio.rest import Client
 from datetime import datetime
+from django.utils import timezone
 # Create your views here.
 
 
@@ -155,12 +156,24 @@ def one(request):
         user_info = getattr(request, 'user_data', None)
         print(user_info)
         id = user_info["id"]
-        emp_obj = Employee.objects.filter(id=id)
-        serializers = EmployeeDetailSerializer(emp_obj, many=True).data
-        # data = []
-        # for emp in emp_obj:
-        #     serializers = EmployeeDetailSerializer(emp).data
-        #     subs_data = []
+        emp_obj = Employee.objects.filter(id=id).first()
+
+        data = []
+        utc_dt = emp_obj.endPlan
+        native_dt = timezone.localtime(utc_dt).replace(tzinfo=None)
+        tt = native_dt < datetime.now()
+        if tt and emp_obj.subscription != "expire":
+            emp_obj.subscription = "expire"
+            emp_obj.save()
+
+        serializers = EmployeeDetailSerializer(emp_obj).data
+        subs_data = []
+        if emp_obj.selectedPlan:
+            subs_data = UserSelectedPlanSerializer(emp_obj.selectedPlan).data
+        serializers["selectedPlan_detail"] = [subs_data]
+        
+        data.append(serializers)
+
             # if str(emp.subscription).lower() in ["paid","cancelled"]:
             #     subs = Subscription.objects.filter(user=id).order_by('-id').first()
             #     subs_ser = SubscriptionProfileDetailSerializer(subs).data
@@ -172,7 +185,7 @@ def one(request):
             #     subs_data.append(subs_ser)
             # serializers["subscription_detail"] = subs_data
             # data.append(serializers)
-        return Response({"message":"Success", "status":200, "data":serializers})
+        return Response({"message":"Success", "status":200, "data":data})
     except Exception as e:
         return Response({"message":str(e), "status":500, "data":[]})
 
@@ -328,18 +341,27 @@ def valid_user_access(request):
         print(user_info)
         id = user_info["id"]
         if Employee.objects.filter(id=id).exists():
-            use_time = user_info["seconds"]
+            use_time = request.data["seconds"]
             emp_obj = Employee.objects.get(id=id)
-            if int(emp_obj.availableSecond) > int(use_time):
-                seconds_left = emp_obj.availableSecond - int(use_time)
-                emp_obj.availableSecond = seconds_left
-                if seconds_left == 0:
-                    emp_obj.subscription = "expire"
-                emp_obj.save()
+            utc_dt = emp_obj.endPlan
+            native_dt = timezone.localtime(utc_dt).replace(tzinfo=None)
+            print(native_dt)
+            print(datetime.now())
 
-                return Response({"message":"Success", "status":200, "data":[]})
+            tt = native_dt > datetime.now()
+            if tt and emp_obj.subscription != "expire":
+                if int(emp_obj.availableSecond) >= int(use_time):
+                    seconds_left = emp_obj.availableSecond - int(use_time)
+                    emp_obj.availableSecond = seconds_left
+                    if seconds_left == 0:
+                        emp_obj.subscription = "expire"
+                    emp_obj.save()
+
+                    return Response({"message":"Success", "status":200, "data":[]})
+                else:
+                    return Response({"message":"Access Denied", "status":404, "data":[]})
             else:
-                return Response({"message":"Access Denied", "status":404, "data":[]})
+                return Response({"message":"Subscription Expired!", "status":404, "data":[]})
         return Response({"message":"Invalid User", "status":404, "data":[]})
     except Exception as e:
         return Response({"message":str(e), "status":500, "data":[]})

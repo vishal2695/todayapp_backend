@@ -4,7 +4,7 @@ from .models import Plan, Subscription, Payment
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = '__all__'
+        exclude = ('created_at', 'updated_at')
         read_only_fields = ['id', 'razorpay_plan_id', 'created_at', 'updated_at']
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -58,3 +58,5 @@ class PlanDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
         fields = '__all__'
+
+        

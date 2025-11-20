@@ -462,13 +462,14 @@ def payment_all_filter(request):
         print(user_info)
         id = user_info["id"]
         if Employee.objects.filter(id=id).exists():
-            subs_id = list(Subscription.objects.filter(user=id).values_list('id', flat=True))
-            emp_obj = Payment.objects.filter(subscription__in=subs_id).order_by('-id')
+            # subs_id = list(Subscription.objects.filter(user_id=id).values_list('id', flat=True))
+            emp_obj = Payment.objects.filter(subscription__user_id=id).order_by('-id')
             serializers = PaymentDetailSerializer(emp_obj, many=True).data
             return Response({"message":"Success", "status":200, "data":serializers})
         return Response({"message":"Invalid User", "status":404, "data":[]})
     except Exception as e:
         return Response({"message":str(e), "status":500, "data":[]})
+
 
 
 @authenticate_token
@@ -491,9 +492,12 @@ def payment_all(request):
 
 #### >>>>>>>>>>>>>>>>> ####x
 
-def home(request, id):
+def home(request, id, pid):
     plan_obj = Plan.objects.all()
-    return render(request, 'payment.html', {"plan":plan_obj, "uid":id})
+    plan_objj = Plan.objects.filter(id=pid).first()
+    context = {"plan":plan_obj, "uid":id, "ppid":pid, "plan_validity":plan_objj.validity, "amt":plan_objj.amount}
+    print(context)
+    return render(request, 'payment.html', context)
 
 
 def create_order(request):

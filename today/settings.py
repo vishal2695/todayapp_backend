@@ -114,7 +114,7 @@ DATABASES = {
 #         "ENGINE": "django.db.backends.mysql",
 #         "NAME": "today_db",
 #         "USER": "root",
-#         "PASSWORD": "Cinntra@2024#",
+#         "PASSWORD": "",
 #         "HOST": "localhost",
 #         "PORT": "3306",   
 #     }

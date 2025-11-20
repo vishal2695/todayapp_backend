@@ -13,6 +13,7 @@ urlpatterns = [
     path('image_remove', image_remove, name='image_remove'),
     path('deactivate', deactivate, name='deactivate'),
 
+    path('valid_user_access', valid_user_access, name='valid_user_access'),
 
 
     path("speak", speak, name="speak"),

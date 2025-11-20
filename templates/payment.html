@@ -386,7 +386,7 @@
 
 <body>
 
-<h1>Select Your Plan</h1>
+<!-- <h1>Select Your Plan</h1>
 
 <div class="plans">
 
@@ -403,13 +403,19 @@
 
 <input type="text" id="name" data-uid="{{uid}}" placeholder="Enter your name" required>
 
-<button id="payBtn" disabled>Choose a Plan</button>
+<button id="payBtn" disabled>Choose a Plan</button> -->
+
+{{ plan_validity|json_script:"plandity" }}
+{{ uid|json_script:"user-idd" }}
+{{ ppid|json_script:"plan-idd" }}
+{{ amt|json_script:"amount_val" }}
+
 
 <script>
-  let selectedPlan = null;
-  let planid = null;
-  let userid = null;
-  let amount = 0;
+  let selectedPlan = JSON.parse(document.getElementById("plandity").textContent);
+  let planid = JSON.parse(document.getElementById("plan-idd").textContent);
+  let userid = JSON.parse(document.getElementById("user-idd").textContent);
+  let amount = JSON.parse(document.getElementById("amount_val").textContent);
 
   $(".plan-card").click(function () {
       $(".plan-card").removeClass("active");
@@ -422,6 +428,9 @@
       $("#payBtn").text(`Pay ₹${amount}`);
       $("#payBtn").prop("disabled", false);
   });
+
+
+
 
   $("#payBtn").click(function(e){
       e.preventDefault();
@@ -462,9 +471,51 @@
           };
 
           var rzp = new Razorpay(options);
-          rzp.open();
+          // rzp.open();
       });
   });
+  
+
+function raz_run(){
+      $.post("/subscription/plan/create-order/", {
+          name: "",
+          uid: userid,
+          amount: amount,
+          plan: selectedPlan,
+          pid: planid,
+          csrfmiddlewaretoken: "{{ csrf_token }}"
+      }, function(data) {
+
+          var options = {
+              "key": data.key,
+              "amount": data.amount,
+              "currency": "INR",
+              "name": "Today App",
+              "description": selectedPlan + "-Day Plan",
+              "order_id": data.order_id,
+              "theme": {"color": "#d4af37"}, // GOLD THEME
+              "handler": function (response) {
+                  $.post("/subscription/plan/success/", {
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_signature: response.razorpay_signature,
+                      plan: selectedPlan,
+                      pid:planid,
+                      csrfmiddlewaretoken: "{{ csrf_token }}"
+                  }, function(datas) {
+                      window.location.href = "/subscription/plan/success/detail/"+datas.pid;
+                  });
+              }
+          };
+
+          var rzp = new Razorpay(options);
+          rzp.open();
+      });
+}
+
+raz_run();
+
+
 </script>
 
 </body>

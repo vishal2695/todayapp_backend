@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Employee, OTP
+from Subscription.models import Plan
 import datetime
 
 
@@ -19,3 +20,12 @@ class OTPSerializer(serializers.ModelSerializer):
     class Meta:
         model  = OTP
         fields = "__all__"
+
+class UserSelectedPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Plan
+        fields = "__all__"
+
+
+
+
