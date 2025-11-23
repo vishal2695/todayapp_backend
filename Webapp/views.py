@@ -43,11 +43,11 @@ def web_home(request):
     print(request.session.get("session_id"))
     emp_data = Employee.objects.all().count()
     act_data = Activity.objects.all()
-    pay_data = Payment.objects.filter(status="created")
+    pay_data = Payment.objects.filter(status="captured")
     print("pay_data")
     total_time = sum(act.totalSecond for act in act_data)
     total_amount = sum(pay.amount for pay in pay_data)
-    user_list = Employee.objects.all().order_by('-id')
+    user_list = Employee.objects.all().order_by('id')
     context = {
         "user_count" :emp_data,
         "total_time" :round(total_time/3600,2),
