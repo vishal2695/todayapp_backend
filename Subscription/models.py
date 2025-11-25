@@ -9,6 +9,7 @@ class Plan(models.Model):
         ('yearly', 'Yearly'),
     ]
     name = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
     amount = models.IntegerField(help_text="Amount in paise")
     currency = models.CharField(max_length=3, default='INR')
     period = models.CharField(max_length=20, choices=PERIOD_CHOICES)
@@ -18,6 +19,8 @@ class Plan(models.Model):
     validity = models.IntegerField(default=0)    #days
     availableSecond = models.IntegerField(default=3600)    #seconds
     is_active = models.BooleanField(default=True)
+    is_popular = models.BooleanField(default=False)
+    features = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -77,6 +80,7 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created')
     method = models.CharField(max_length=50, null=True, blank=True)
     description = models.TextField(blank=True)
+    error_code = models.CharField(max_length=200, null=True, blank=True)
     payment_type = models.CharField(max_length=100, choices=TYPE_CHOICES, default='one time')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

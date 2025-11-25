@@ -10,7 +10,7 @@ from Employee.models import Employee
 
 RAZORPAY_KEY_ID     = 'rzp_test_zPgaGkNcjHMsdZ'
 RAZORPAY_KEY_SECRET = 'VbL5RhqzLUebGs758QPdNH01'
-
+RAZORPAY_WEBHOOK_SECRET = ''
 
 
 class CreateSubscriptionAPI(APIView):
@@ -463,9 +463,13 @@ def payment_all_filter(request):
         id = user_info["id"]
         if Employee.objects.filter(id=id).exists():
             # subs_id = list(Subscription.objects.filter(user_id=id).values_list('id', flat=True))
-            emp_obj = Payment.objects.filter(subscription__user_id=id).order_by('-id')
-            serializers = PaymentDetailSerializer(emp_obj, many=True).data
-            return Response({"message":"Success", "status":200, "data":serializers})
+            pay_obj = Payment.objects.filter(subscription__user_id=id).order_by('-id')
+            data= []
+            for pay in pay_obj:
+                serializers = PaymentDetailSerializer(pay).data
+                serializers["plan_detail"] = PlanSerializer(pay.subscription.plan).data
+                data.append(serializers)
+            return Response({"message":"Success", "status":200, "data":data})
         return Response({"message":"Invalid User", "status":404, "data":[]})
     except Exception as e:
         return Response({"message":str(e), "status":500, "data":[]})
@@ -598,7 +602,11 @@ def payment_cancel_detail(request, pid):
 def payment_cancel(request):
     if request.method == "POST":
         order_id = request.POST.get("order_id")
+        print(request.POST)
+        error_code = request.POST.get("error_code")
+        error_reason = request.POST.get("error_reason")
 
+        # raw_value = request.POST.get("raw")  # will be a string or None
         try:
             payment = Payment.objects.get(razorpay_order_id=order_id)
         except Payment.DoesNotExist:
@@ -606,6 +614,8 @@ def payment_cancel(request):
 
         # Mark payment cancelled
         payment.status = "failed"
+        payment.error_code = error_code
+        payment.description = error_reason
         payment.save()
 
         # Delete subscription created during order
@@ -615,3 +625,83 @@ def payment_cancel(request):
 
 
 
+
+# @csrf_exempt
+# def payment_razorpay_webhook(request):
+#     data = json.loads(request.body.decode("utf-8"))
+
+#     event = data.get("event")
+#     payload = data.get("payload", {})
+
+#     if event == "payment.failed":
+#         payment_id = payload["payment"]["entity"]["id"]
+#         order_id = payload["payment"]["entity"]["order_id"]
+
+#         payment = Payment.objects.filter(razorpay_order_id=order_id).first()
+#         if payment:
+#             payment.status = "failed"
+#             payment.error_code = payload["payment"]["entity"]["error_code"]
+#             payment.description = payload["payment"]["entity"]["error_description"]
+#             payment.save()
+
+#             payment.subscription.status = "cancelled"
+#             payment.subscription.save()
+
+#     if event == "payment.captured":
+#         payment_id = payload["payment"]["entity"]["id"]
+#         order_id = payload["payment"]["entity"]["order_id"]
+
+#         payment = Payment.objects.filter(razorpay_order_id=order_id).first()
+#         if payment:
+#             payment.status = "captured"
+#             payment.razorpay_payment_id = payment_id
+#             payment.save()
+#             payment.subscription.status = "active"
+#             payment.subscription.save()
+
+#     return JsonResponse({"status": "ok"})
+
+@csrf_exempt
+def payment_razorpay_webhook(request):
+    webhook_secret = RAZORPAY_WEBHOOK_SECRET
+    # ✔ Verify signature
+    received_sig = request.headers.get('X-Razorpay-Signature')
+    body = request.body.decode('utf-8')
+
+    try:
+        razorpay.Utility.verify_webhook_signature(body, received_sig, webhook_secret)
+    except:
+        return JsonResponse({"status": "signature mismatch"}, status=400)
+
+    data = json.loads(body)
+    event = data["event"]
+
+    if event == "payment.failed":
+        payment_entity = data["payload"]["payment"]["entity"]
+        order_id = payment_entity["order_id"]
+
+        payment = Payment.objects.filter(razorpay_order_id=order_id).first()
+        if payment:
+            payment.status = "failed"
+            payment.error_code = payment_entity.get("error_code")
+            payment.description = payment_entity.get("error_description")
+            # payment.failure_payload = payment_entity
+            payment.save()
+
+            payment.subscription.status = "cancelled"
+            payment.subscription.save()
+
+    if event == "payment.captured":
+        payment_entity = data["payload"]["payment"]["entity"]
+        order_id = payment_entity["order_id"]
+
+        payment = Payment.objects.filter(razorpay_order_id=order_id).first()
+        if payment:
+            payment.status = "captured"
+            payment.razorpay_payment_id = payment_entity["id"]
+            payment.save()
+
+            payment.subscription.status = "active"
+            payment.subscription.save()
+
+    return JsonResponse({"status": "ok"})

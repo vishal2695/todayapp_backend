@@ -515,6 +515,8 @@ function raz_run() {
                 "ondismiss": function () {
                     $.post("/subscription/plan/cancel/", {
                         order_id: data.order_id,
+                        error_code: "USER_CANCELLED",
+                        error_reason: "User closed payment window",
                         csrfmiddlewaretoken: "{{ csrf_token }}"
                     }, function (resp) {
                         alert("Payment Cancelled");
@@ -527,6 +529,22 @@ function raz_run() {
         };
 
         var rzp = new Razorpay(options);
+
+        // FAILED PAYMENT HANDLER ❌🔥
+        rzp.on("payment.failed", function (response) {
+            $.post("/subscription/plan/cancel/", {
+                order_id: data.order_id,
+                error_code: response.error.code,
+                error_reason: response.error.description,
+                raw: JSON.stringify(response.error),
+                csrfmiddlewaretoken: "{{ csrf_token }}"
+            }, function (resp) {
+                window.location.href = "/subscription/plan/cancel/detail/" + resp.order_id;
+            });
+        });
+
+
+
         rzp.open();
     });
 }

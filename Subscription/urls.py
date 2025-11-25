@@ -11,7 +11,7 @@ urlpatterns = [
     path('api/payment/all_filter', payment_all_filter),
     path('api/payment/all', payment_all),
     
-    path('webhook/razorpay/', RazorpayWebhookView.as_view({'post': 'create'}), name='razorpay-webhook'),
+    # path('webhook/razorpay/', RazorpayWebhookView.as_view({'post': 'create'}), name='razorpay-webhook'),
 
     path('plan/<int:id>/<int:pid>', home, name='home'),
     path('plan/create-order/',create_order),
@@ -19,5 +19,7 @@ urlpatterns = [
     path('plan/success/detail/<str:pid>', payment_detail),
     path('plan/cancel/detail/<str:pid>', payment_cancel_detail),
     path("plan/cancel/", payment_cancel, name="payment-cancel"),
+
+    path("payment/webhook/razorpay/", payment_razorpay_webhook, name="payment-razorpay-webhook"),
 
 ]
