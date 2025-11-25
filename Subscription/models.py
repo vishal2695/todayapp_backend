@@ -1,5 +1,10 @@
 from django.db import models
 from Employee.models import Employee
+import uuid
+from django.utils.text import slugify
+import random
+import string
+
 
 class Plan(models.Model):
     PERIOD_CHOICES = [
@@ -24,6 +29,20 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    slug = models.SlugField(max_length=50, blank=True)
+
+    def generate_slug(self):
+        length = random.randint(10, 20)  # ensures between 10–20 chars
+        chars = string.ascii_letters + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+
+    def save(self, *args, **kwargs):
+        # ALWAYS regenerate slug on create & update
+        self.slug = self.generate_slug()
+        super().save(*args, **kwargs)
+
+
+
     def __str__(self):
         return f"{self.id}--{self.name} - ₹{self.amount/100}/{self.period}"
 

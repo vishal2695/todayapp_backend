@@ -1,5 +1,8 @@
 from django.db import models
-
+import uuid
+from django.utils.text import slugify
+import random
+import string
 # Create your models here.
 
 
@@ -25,6 +28,19 @@ class Employee(models.Model):
     lastLogin      = models.DateTimeField(auto_now_add=True)
     createdAt      = models.DateTimeField(auto_now_add=True)
     updatedAt      = models.DateTimeField(auto_now=True)
+
+    slug           = models.SlugField(max_length=50, unique=True, blank=True)
+
+    def generate_slug(self):
+        length = random.randint(10, 20)  # ensures between 10–20 chars
+        chars = string.ascii_letters + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+
+    def save(self, *args, **kwargs):
+        # ALWAYS regenerate slug on create & update
+        self.slug = self.generate_slug()
+        super().save(*args, **kwargs)
+
 
 
 

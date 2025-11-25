@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -6,7 +6,7 @@ from django.conf import settings
 import razorpay
 from datetime import datetime, timedelta
 from Employee.models import Employee 
-
+from django.http import Http404, HttpResponse
 
 RAZORPAY_KEY_ID     = 'rzp_test_zPgaGkNcjHMsdZ'
 RAZORPAY_KEY_SECRET = 'VbL5RhqzLUebGs758QPdNH01'
@@ -496,12 +496,18 @@ def payment_all(request):
 
 #### >>>>>>>>>>>>>>>>> ####x
 
-def home(request, id, pid):
-    plan_obj = Plan.objects.all()
-    plan_objj = Plan.objects.filter(id=pid).first()
-    context = {"plan":plan_obj, "uid":id, "ppid":pid, "plan_validity":plan_objj.validity, "amt":plan_objj.amount}
-    print(context)
-    return render(request, 'payment.html', context)
+def start_payment(request, id, pid):
+    if Employee.objects.filter(slug=id).exists() and Plan.objects.filter(slug=pid).exists():
+        plan_obj = Plan.objects.all()
+        plan_objj = Plan.objects.filter(slug=pid).first()
+        context = {"plan":plan_obj, "uid":id, "ppid":pid, "plan_validity":plan_objj.validity, "amt":plan_objj.amount}
+        print(context)
+        return render(request, 'payment.html', context)
+    return render(request, 'error.html')
+    
+
+
+
 
 
 def create_order(request):
@@ -513,9 +519,10 @@ def create_order(request):
         print("pid......",pid)
         client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
-        plan_obj = Plan.objects.get(id=pid)
+        plan_obj = Plan.objects.get(slug=pid)
         end_at = datetime.now() + timedelta(days=plan_obj.validity)
-        subs_obj = Subscription(user_id=uid, plan_id=pid, start_at=datetime.now(), end_at=end_at, next_charge_at=end_at)
+        emp_obj = Employee.objects.get(slug=uid)
+        subs_obj = Subscription(user_id=emp_obj.id, plan_id=plan_obj.id, start_at=datetime.now(), end_at=end_at, next_charge_at=end_at)
         subs_obj.save()
 
 
