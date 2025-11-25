@@ -17,6 +17,7 @@ urlpatterns = [
     path('plan/create-order/',create_order),
     path('plan/success/', payment_success),
     path('plan/success/detail/<str:pid>', payment_detail),
-
+    path('plan/cancel/detail/<str:pid>', payment_cancel_detail),
+    path("plan/cancel/", payment_cancel, name="payment-cancel"),
 
 ]

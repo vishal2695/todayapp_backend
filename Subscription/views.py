@@ -583,7 +583,35 @@ def payment_detail(request, pid):
     }
     return render(request, "success.html", context)
 
+def payment_cancel_detail(request, pid):
+    pobj = Payment.objects.get(razorpay_order_id=pid)
+    context = {
+        "order_id": pobj.razorpay_order_id,
+        "amount": pobj.amount,                              
+        "plan_name": pobj.subscription.plan.name,
+        "validity_days": pobj.subscription.plan.validity
+    }
+    return render(request, "failed.html", context)
 
+
+@csrf_exempt
+def payment_cancel(request):
+    if request.method == "POST":
+        order_id = request.POST.get("order_id")
+
+        try:
+            payment = Payment.objects.get(razorpay_order_id=order_id)
+        except Payment.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Invalid order id"})
+
+        # Mark payment cancelled
+        payment.status = "failed"
+        payment.save()
+
+        # Delete subscription created during order
+        Subscription.objects.filter(id=payment.subscription.id).update(status="cancelled")
+
+        return JsonResponse({"status": "cancelled", "order_id":payment.razorpay_order_id})
 
 
 

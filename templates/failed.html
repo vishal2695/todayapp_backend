@@ -38,6 +38,9 @@
             text-align: center;
             margin-bottom: 10px;
         }
+        .checkmark.failed {
+            color: #ff4d4d;   /* red for failed */
+        }
 
         h1 {
             text-align: center;
@@ -94,17 +97,16 @@
 <body>
 
     <div class="container">
-        <div class="checkmark">✔</div>
+        <div class="checkmark failed">✖</div>
 
-        <h1>Payment Successful</h1>
+        <h1>Payment Failed</h1>
         
         <div class="details-box">
-            <p><span class="label">Payment ID:</span> {{ payment_id }}</p>
             <p><span class="label">Order ID:</span> {{ order_id }}</p>
             <p><span class="label">Amount Paid:</span> ₹{{ amount }}</p>
             <p><span class="label">Plan Name:</span> {{ plan_name }}</p>
             <p><span class="label">Validity:</span> {{ validity_days }} Days</p>
-            <p><span class="label">Status:</span> Successful</p>
+            <p><span class="label">Status:</span> Cancelled</p>
         </div>
 
         <div class="button-box">
