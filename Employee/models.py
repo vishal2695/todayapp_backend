@@ -4,6 +4,11 @@ from django.utils.text import slugify
 import random
 import string
 # Create your models here.
+from datetime import timedelta
+from django.utils.timezone import now
+
+def default_end_plan():
+    return now() + timedelta(days=15)
 
 
 class Employee(models.Model):
@@ -24,7 +29,7 @@ class Employee(models.Model):
     availableSecond = models.IntegerField(default=1800)
     selectedPlan   = models.ForeignKey('Subscription.Plan', on_delete=models.SET_NULL, null=True, blank=True)
     startPlan      = models.DateTimeField(auto_now_add=True)
-    endPlan        = models.DateTimeField(auto_now_add=True)
+    endPlan        = models.DateTimeField(default=default_end_plan)
     lastLogin      = models.DateTimeField(auto_now_add=True)
     createdAt      = models.DateTimeField(auto_now_add=True)
     updatedAt      = models.DateTimeField(auto_now=True)

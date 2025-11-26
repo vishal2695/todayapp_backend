@@ -519,9 +519,6 @@ function raz_run() {
                         error_reason: "User closed payment window",
                         csrfmiddlewaretoken: "{{ csrf_token }}"
                     }, function (resp) {
-                        alert("Payment Cancelled");
-                        console.log("dats..",resp);
-                        console.log(resp.order_id);
                         window.location.href = "/subscription/plan/cancel/detail/" + resp.order_id;
                     });
                 }

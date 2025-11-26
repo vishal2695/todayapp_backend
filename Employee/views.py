@@ -167,12 +167,13 @@ def one(request):
             emp_obj.save()
 
         serializers = EmployeeDetailSerializer(emp_obj).data
-        subs_data = []
+        subss_data = []
         if emp_obj.selectedPlan:
             subs_data = UserSelectedPlanSerializer(emp_obj.selectedPlan).data
             subs_data["totalSecond"] = emp_obj.selectedPlan.availableSecond
             subs_data["availableSecond"] = emp_obj.availableSecond
-        serializers["selectedPlan_detail"] = [subs_data]
+            subss_data.append(subs_data)
+        serializers["selectedPlan_detail"] = subss_data
         
         data.append(serializers)
 
