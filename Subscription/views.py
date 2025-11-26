@@ -559,6 +559,13 @@ def payment_success(request):
         payment.razorpay_payment_id = payment_id
         payment.razorpay_signature = signature
         payment.status = "captured"
+
+        try:
+            client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            payment_data = client.payment.fetch(payment_id)
+            payment.method = payment_data.get("method")
+        except:
+            pass
         # payment.paid = True
         payment.save()
 
@@ -619,6 +626,15 @@ def payment_cancel(request):
         except Payment.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Invalid order id"})
 
+        try:
+            client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            payment_data = client.order.payments(order_id)
+            if len(payment_data)>0:
+                payment.method = payment_data[0].get("method")
+        except:
+            pass
+
+
         # Mark payment cancelled
         payment.status = "failed"
         payment.error_code = error_code
@@ -630,7 +646,11 @@ def payment_cancel(request):
 
         return JsonResponse({"status": "cancelled", "order_id":payment.razorpay_order_id})
 
-
+def check(request, id):
+    client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+    payment_data = client.payment.fetch(id)
+    print(payment_data)
+    return JsonResponse({"status": "cancelled", "order_id":"datas"})
 
 
 # @csrf_exempt
@@ -693,6 +713,12 @@ def payment_razorpay_webhook(request):
             payment.error_code = payment_entity.get("error_code")
             payment.description = payment_entity.get("error_description")
             # payment.failure_payload = payment_entity
+
+            if payment.razorpay_payment_id:
+                client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+                payment_data = client.payment.fetch(payment.razorpay_payment_id)
+                payment.method = payment_data.get("method")
+
             payment.save()
 
             payment.subscription.status = "cancelled"
@@ -706,6 +732,14 @@ def payment_razorpay_webhook(request):
         if payment:
             payment.status = "captured"
             payment.razorpay_payment_id = payment_entity["id"]
+
+            try:
+                client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+                payment_data = client.payment.fetch(payment_entity["id"])
+                payment.method = payment_data.get("method")
+            except:
+                pass
+
             payment.save()
 
             payment.subscription.status = "active"

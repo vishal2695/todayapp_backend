@@ -19,6 +19,7 @@ urlpatterns = [
     path('plan/success/detail/<str:pid>', payment_detail),
     path('plan/cancel/detail/<str:pid>', payment_cancel_detail),
     path("plan/cancel/", payment_cancel, name="payment-cancel"),
+    path("check/<str:id>", check, name="check"),
 
     path("payment/webhook/razorpay/", payment_razorpay_webhook, name="payment-razorpay-webhook"),
 
