@@ -158,18 +158,18 @@ USE_TZ = True
 # STATIC_URL = 'static/'
 
 
-STATIC_URL = 'static/'
-# STATICFILES_DIRS = [STATIC_DIR]
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = '/media/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
-
-
 # STATIC_URL = 'static/'
-# STATIC_ROOT = "/var/www/today/static/"
-
+# # STATICFILES_DIRS = [STATIC_DIR]
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # MEDIA_URL = '/media/'
-# MEDIA_ROOT = "/var/www/today/media/"
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+
+STATIC_URL = 'static/'
+STATIC_ROOT = "/var/www/project/todayapp_backend/static/"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = "/var/www/project/todayapp_backend/media/"
 
 
 # Default primary key field type
